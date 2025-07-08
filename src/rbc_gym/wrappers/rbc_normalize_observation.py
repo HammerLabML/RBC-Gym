@@ -28,7 +28,7 @@ class RBCNormalizeObservation(gym.ObservationWrapper):
         maxT = T[1] + self.heater_limit
 
         # loose min and max for velocities
-        if u_limit is None and isinstance(env, RayleighBenardConvection3DEnv):
+        if u_limit is None and isinstance(env.unwrapped, RayleighBenardConvection3DEnv):
             u_limit = self.__get_u_limit_3d(env.unwrapped.ra)
         elif u_limit is None:
             raise ValueError("u_limit must be provided for 2D RBC.")

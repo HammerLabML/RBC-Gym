@@ -1459,7 +1459,7 @@ wheels = [
 
 [[package]]
 name = "rbc-gym"
-version = "0.1.7"
+version = "0.1.8"
 source = { editable = "." }
 dependencies = [
     { name = "gymnasium" },

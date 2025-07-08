@@ -197,7 +197,6 @@ class RayleighBenardConvection3DEnv(gym.Env):
     def __get_obs(self) -> Any:
         obs = np.array(self.sim.get_state(), dtype=np.float32)
         obs = obs.transpose(0, 3, 2, 1)  # julia uses column-major order
-        obs = np.flip(obs, axis=2)
         return obs
 
     def __get_reward(self) -> float:
@@ -241,6 +240,7 @@ class RayleighBenardConvection3DEnv(gym.Env):
 
         # Temperature is channel 0
         T = self.__get_obs()[RBC3DField.T]
+        T = np.flip(T, axis=1)
 
         # get min max value
         cmin = self.temperature_difference[0]
@@ -290,28 +290,16 @@ class RayleighBenardConvection3DEnv(gym.Env):
             return
         self.closed = True
 
-        if self._plotter is not None:
-            self._plotter.close()
-
-    def close(self):
-        if self.closed:
-            return
-        self.closed = True
-
-        # ✅ Shut down the Julia simulation
+        # Shut down the Julia simulation
         try:
             self.sim.shutdown_simulation()
-            self.logger.info("✅ Julia simulation shut down successfully.")
-
             self.sim.GC.gc()
-            self.logger.info("✅ Forced Julia GC from Python side.")
         except Exception as e:
             self.logger.warning(f"Could not shut down Julia simulation cleanly: {e}")
 
-        # ✅ Shut down the PyVista plotter
+        # Shut down the PyVista plotter
         if self._plotter is not None:
             self._plotter.close()
-            self.logger.info("✅ Closed PyVista plotter.")
 
         del self.sim
         super().close()

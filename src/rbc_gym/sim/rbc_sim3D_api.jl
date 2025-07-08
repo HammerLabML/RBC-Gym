@@ -166,8 +166,6 @@ function shutdown_simulation()
     global model = nothing
 
     GC.gc()  # Force Julia garbage collection
-
-    @info "✅ Julia simulation shut down and GPU memory freed!"
 end
 
 
