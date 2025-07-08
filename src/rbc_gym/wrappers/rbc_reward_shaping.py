@@ -38,11 +38,9 @@ class RBCRewardShaping(gym.Wrapper):
             )
             (self.line_cells,) = self.ax_anim.plot([], [], "x")
 
-
-    def reset(self,
-        seed: int | None = None,
-        options: Dict[str, Any] | None = None
-        ) -> Tuple[Any, Dict[str, Any]]:
+    def reset(
+        self, seed: int | None = None, options: Dict[str, Any] | None = None
+    ) -> Tuple[Any, Dict[str, Any]]:
         # NOTE: for debugging the cell distance computation
         if self.debug_cell_dist:
             self.update()

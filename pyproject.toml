@@ -12,7 +12,6 @@ dependencies = [
     "juliacall>=0.9.24",
     "juliapkg>=0.1.16",
     "matplotlib>=3.10.1",
-    "plotly>=6.1.2",
     "pygame>=2.6.1",
     "pyqt5>=5.15.11",
     "pyvista>=0.45.2",

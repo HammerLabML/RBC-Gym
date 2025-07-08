@@ -293,7 +293,6 @@ class RayleighBenardConvection3DEnv(gym.Env):
         if self._plotter is not None:
             self._plotter.close()
 
-
     def close(self):
         if self.closed:
             return

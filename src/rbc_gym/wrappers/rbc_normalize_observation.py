@@ -7,6 +7,7 @@ import logging
 
 logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
+
 class RBCNormalizeObservation(gym.ObservationWrapper):
     """Normalize the observation to image range [0, maxval] with clipping"""
 
@@ -25,7 +26,9 @@ class RBCNormalizeObservation(gym.ObservationWrapper):
         self.excursion_eps = excursion_eps
         if U_limit is None and isinstance(env, RayleighBenardConvection3DEnv):
             # TODO this is for the 3D case, the relationship for the 2D case should still be done.
-            logging.info("U_limit is None, calculating U_limit based on Ra for 3D RBC. TODO implement for 2D RBC.")
+            logging.info(
+                "U_limit is None, calculating U_limit based on Ra for 3D RBC. TODO implement for 2D RBC."
+            )
             Ra = env.unwrapped.Ra
             w_inf = 0.96549382
             Ra_c = 654.37063331
@@ -36,7 +39,7 @@ class RBCNormalizeObservation(gym.ObservationWrapper):
             low=-self.maxval * (1 + excursion_eps),
             high=self.maxval * (1 + excursion_eps),
             shape=shape,
-            dtype=np.float32
+            dtype=np.float32,
         )
         self.heater_limit = heater_limit
         self.clip_obs = clip_obs
@@ -52,11 +55,16 @@ class RBCNormalizeObservation(gym.ObservationWrapper):
     def observation(self, obs) -> Any:
         # Normalize each channel
         for c in range(obs.shape[0]):
-            obs[c] = self.maxval * (2 * (obs[c] - self.min_vals[c]) / (self.max_vals[c] - self.min_vals[c]) - 1)
+            obs[c] = self.maxval * (
+                2 * (obs[c] - self.min_vals[c]) / (self.max_vals[c] - self.min_vals[c])
+                - 1
+            )
         # at this point obs is in the range [-maxval, maxval], or outside of it if the observation is outside the min/max range
         if self.clip_obs:
             obs = np.clip(obs, -self.maxval, self.maxval)
         if np.any(np.abs(obs) > (1 + self.excursion_eps) * self.maxval):
             max_obs = np.max(np.abs(obs))
-            print(f"Warning: observation exceeds maxval {self.maxval}, namely: {max_obs} is the max observed value.")
+            print(
+                f"Warning: observation exceeds maxval {self.maxval}, namely: {max_obs} is the max observed value."
+            )
         return obs
