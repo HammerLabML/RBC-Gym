@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from scipy.signal import find_peaks
 from rbc_gym.envs.rbc2D import RBCField
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 
 class RBCRewardShaping(gym.Wrapper):

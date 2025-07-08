@@ -27,6 +27,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "imageio[ffmpeg]>=2.37.0",
+    "ipykernel>=6.29.5",
     "pytest>=8.3.5",
     "ruff>=0.11.7",
     "wandb[media]>=0.20.1",
