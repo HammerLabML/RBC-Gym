@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export JULIA_PROJECT="${SCRIPT_DIR}/../.venv/julia_env"
 
 # CHANGE PARAMETERS HERE
-dir=${SCRIPT_DIR}/../data/checkpoints/
+dir=${SCRIPT_DIR}/../data/checkpoints/3D/
 ra=2500
 pr=0.7
 N=(32 32 16)

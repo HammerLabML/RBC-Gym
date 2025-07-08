@@ -55,3 +55,4 @@ logs
 wandb
 results
 slurmout
+data/datasets

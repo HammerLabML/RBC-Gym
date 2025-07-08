@@ -54,7 +54,7 @@ function simulate_3d_rb(dir, seed, random_inits, Ra, Pr, N, L, b, random_kick, Î
     if !isdir(dir)
         mkpath(dir)
     end
-    path = joinpath(dir, "3D_ckpt_ra$(Ra).h5")
+    path = joinpath(dir, "ckpt_ra$(Ra).h5")
     h5_file = h5open(path, "w")
 
     attrs(h5_file)["num_episodes"] = random_inits

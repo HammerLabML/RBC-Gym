@@ -213,18 +213,7 @@ class RayleighBenardConvection3DEnv(gym.Env):
         }
 
     def render(self):
-        """
-        Visualise the current 3‑D temperature field using PyVista.
-        Parameters
-        ----------
-        dx, dy, dz : float, optional
-            Physical grid spacing in the x-, y-, and z-directions. These
-            scale the axes in the scene. Defaults to 1.0 for each.
-        stride : int, optional
-            Sub-sampling factor along each axis (1 = full resolution, 2 = every
-            other voxel, …). Rendering ≈ N³/stride³ voxels, so large stride
-            values speed up volume display.
-        """
+        """Visualise the current 3-D temperature field using PyVista."""
         if self.render_mode == "human":
             live = True
         elif self.render_mode == "rgb_array":
