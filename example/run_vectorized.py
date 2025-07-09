@@ -8,20 +8,26 @@ import multiprocessing as mp
 
 def main() -> None:
     """Run a small vectorized rollout to sanity-check the environment."""
+    # params
+    dt = 0.5
+    length = 50
+
     env = gym.make_vec(
         "rbc_gym/RayleighBenardConvection2D-v0",
-        num_envs=6,
+        num_envs=5,
         vectorization_mode="async",
         vector_kwargs={
             "copy": True,
             "daemon": True,
         },
         render_mode="human",
+        heater_duration=dt,
+        episode_length=length,
     )
 
     obs, info = env.reset()
     print(f"Observation shape: {obs.shape}")
-    for _ in tqdm(range(100)):
+    for _ in tqdm(range(int(length/dt))):
         action = env.action_space.sample()
         observation, reward, terminated, truncated, info = env.step(action)
         env.render()

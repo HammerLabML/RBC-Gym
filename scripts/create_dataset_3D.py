@@ -21,9 +21,6 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     dir = "data/datasets/3D"
     base_seed = 42
 
-    def wrap(env):
-        return RBCNormalizeObservation(env, heater_limit=limit, u_limit=None)
-
     # Set up environment
     env = gym.make_vec(
         "rbc_gym/RayleighBenardConvection3D-v0",
@@ -34,8 +31,6 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
             "copy": True,
             "daemon": True,
         },
-        # wrappers
-        wrappers=[wrap],
         # env params
         render_mode=None,
         rayleigh_number=ra,

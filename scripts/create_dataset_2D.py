@@ -5,6 +5,7 @@ import gymnasium as gym
 from tqdm import tqdm
 import h5py
 import multiprocessing as mp
+from rbc_gym.wrappers import RBCNormalizeObservation
 
 
 def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):
@@ -29,6 +30,7 @@ def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):
             "copy": True,
             "daemon": True,
         },
+        # env params
         render_mode=None,
         rayleigh_number=ra,
         episode_length=length,
@@ -42,75 +44,66 @@ def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):
     # Set up h5 dataset
     path = f"{dir}/{split}/ra{ra}.h5"
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    file = h5py.File(path, "w")
 
-    # Save commonly used parameters of the simulation
-    file.attrs["episodes"] = total_epsiodes
-    file.attrs["steps"] = steps
-    file.attrs["ra"] = ra
-    file.attrs["shape"] = shape
-    file.attrs["dt"] = dt
-    file.attrs["timesteps"] = length
-    file.attrs["segments"] = segments
-    file.attrs["limit"] = limit
-    file.attrs["base_seed"] = base_seed
+    with h5py.File(path, "w") as file:
+        # Save commonly used parameters of the simulation
+        file.attrs["episodes"] = total_epsiodes
+        file.attrs["steps"] = steps
+        file.attrs["ra"] = ra
+        file.attrs["shape"] = shape
+        file.attrs["dt"] = dt
+        file.attrs["timesteps"] = length
+        file.attrs["segments"] = segments
+        file.attrs["limit"] = limit
+        file.attrs["base_seed"] = base_seed
+
+        # Create datasets for observations, actions, and nusselts
+        for idx in range(total_epsiodes):
+            # states
+            file.create_dataset(
+                f"states{idx}",
+                (steps, 5, shape[0], shape[1]),
+                chunks=(1, 5, shape[0], shape[1]),
+                compression="gzip",
+                dtype=np.float32,
+            )
+            # actions
+            file.create_dataset(
+                f"actions{idx}",
+                (steps, segments),
+                chunks=(steps, segments),
+                compression="gzip",
+                dtype=np.float32,
+            )
+            # nusselts
+            file.create_dataset(
+                f"nusselts{idx}",
+                (steps,),
+                chunks=(steps,),
+                compression="gzip",
+                dtype=np.float32,
+            )
 
     # Run environment and save observations
     for base_idx in tqdm(
-        range(int(total_epsiodes / parallel_envs)), position=0, desc="Total Episodes", leave=True
+        range(int(total_epsiodes / parallel_envs)), position=0, desc="Total Episodes"
     ):
         ids = [base_idx * parallel_envs + i for i in range(parallel_envs)]
-        states = [
-            file.create_dataset(
-                f"states{id}",
-                (steps, 5, shape[0], shape[1]),
-                chunks=True,
-                compression="gzip",
-                dtype=np.float32,
-            )
-            for id in ids
-        ]
-
-        actions = [
-            file.create_dataset(
-                f"actions{id}",
-                (steps, segments),
-                chunks=True,
-                compression="gzip",
-                dtype=np.float32,
-            )
-            for id in ids
-        ]
-
-        nusselts = [
-            file.create_dataset(
-                f"nusselts{id}",
-                (steps,),
-                chunks=True,
-                compression="gzip",
-                dtype=np.float32,
-            )
-            for id in ids
-        ]
-
         action = env.action_space.sample() * 0  # no control
         obs, info = env.reset(seed=[base_seed + id for id in ids])
-        for step in tqdm(range(steps), position=1, desc="Time Steps", leave=True, miniters=20):
+        for step in tqdm(range(steps), position=1, desc="Time Steps", leave=False):
             # Save observations
-            for i, _ in enumerate(ids):
-                states[i][step] = obs[i]
-                actions[i][step] = action[i]
-                nusselts[i][step] = info["nusselt_obs"][i]
-
+            for idx, id in enumerate(ids):
+                with h5py.File(path, "r+") as file:
+                    file[f"states{id}"][step] = obs[idx]
+                    file[f"actions{id}"][step] = action[idx]
+                    file[f"nusselts{id}"][step] = info["nusselt_state"][idx]
             # Step environment
             obs, _, terminated, truncated, info = env.step(action)
             if truncated.any() or terminated.any():
                 break
 
-            print("test")
-
     env.close()
-    file.close()
 
 
 if __name__ == "__main__":
@@ -119,6 +112,7 @@ if __name__ == "__main__":
 
     # Argument parser for command line arguments
     import argparse
+
     parser = argparse.ArgumentParser(description="Create dataset for RBC environment.")
     parser.add_argument(
         "--ra",
@@ -132,8 +126,9 @@ if __name__ == "__main__":
         default="train",
         help="Dataset split [train, val, test].",
     )
-    ra = parser.parse_args().ra
-    split = parser.parse_args().split
+    args = parser.parse_args()
+    ra = args.ra
+    split = args.split
 
     # Create dataset
     print(f"Creating dataset for Rayleigh number: {ra}, split: {split}")
