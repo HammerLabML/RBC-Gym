@@ -1,3 +1,4 @@
+import math
 import rbc_gym  # noqa: F401
 import os
 import numpy as np
@@ -11,7 +12,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
     shape = (16, 32, 32)
     dt = 0.375
-    length = 300
+    length = 5  # 300
     segments = 8
     limit = 0.9
     steps = int(length // (dt * 4))  # dt is in freefall time units
@@ -71,7 +72,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
             file.create_dataset(
                 f"actions{idx}",
                 (steps, segments, segments),
-                chunks=(100, segments, segments),
+                chunks=(steps, segments, segments),
                 compression="gzip",
                 dtype=np.float32,
             )
@@ -85,15 +86,19 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
             )
 
     # Run environment and save observations
-    for base_idx in tqdm(
-        range(int(total_epsiodes / parallel_envs)), desc="Total Episodes"
-    ):
+    batches = math.ceil(total_epsiodes / parallel_envs)
+    for base_idx in tqdm(range(batches), desc="Total Episodes"):
         ids = [base_idx * parallel_envs + i for i in range(parallel_envs)]
+        print(f"Processing episodes: {ids}")
         action = env.action_space.sample() * 0  # no control
         obs, info = env.reset(seed=[base_seed + id for id in ids])
         for step in tqdm(range(steps), position=1, desc="Time Steps", leave=False):
             # Save observations
             for idx, id in enumerate(ids):
+                # only write if id is within the total episodes
+                if id >= total_epsiodes:
+                    continue
+                # Save state, action, and nusselt number
                 with h5py.File(path, "r+") as file:
                     file[f"states{id}"][step] = obs[idx]
                     file[f"actions{id}"][step] = action[idx]
@@ -133,7 +138,7 @@ if __name__ == "__main__":
     # Create dataset
     print(f"Creating dataset for Rayleigh number: {ra}, split: {split}")
     if split == "train":
-        create_dataset(ra=ra, split="train", total_epsiodes=25, parallel_envs=15)
+        create_dataset(ra=ra, split="train", total_epsiodes=5, parallel_envs=3)
     elif split == "test":
         create_dataset(ra=ra, split="test", total_epsiodes=10, parallel_envs=10)
     elif split == "val":

@@ -1,3 +1,4 @@
+import math
 import rbc_gym  # noqa: F401
 import os
 import numpy as np
@@ -83,8 +84,9 @@ def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):
             )
 
     # Run environment and save observations
+    batches = math.ceil(total_epsiodes / parallel_envs)
     for base_idx in tqdm(
-        range(int(total_epsiodes / parallel_envs)), position=0, desc="Total Episodes"
+        range(batches), position=0, desc="Total Episodes"
     ):
         ids = [base_idx * parallel_envs + i for i in range(parallel_envs)]
         action = env.action_space.sample() * 0  # no control
@@ -92,6 +94,10 @@ def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):
         for step in tqdm(range(steps), position=1, desc="Time Steps", leave=False):
             # Save observations
             for idx, id in enumerate(ids):
+                # only write if id is within the total episodes
+                if id >= total_epsiodes:
+                    continue
+                # Save state, action, and nusselt number
                 with h5py.File(path, "r+") as file:
                     file[f"states{id}"][step] = obs[idx]
                     file[f"actions{id}"][step] = action[idx]
