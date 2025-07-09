@@ -113,8 +113,8 @@ class RayleighBenardConvection3DEnv(gym.Env):
             highs.append(np.full(self.state_shape, np.inf))
 
         self.observation_space = gym.spaces.Box(
-            lows,
-            highs,
+            np.stack(lows, dtype=np.float32, axis=0),
+            np.stack(highs, dtype=np.float32, axis=0),
             shape=(
                 channels,
                 self.state_shape[0],

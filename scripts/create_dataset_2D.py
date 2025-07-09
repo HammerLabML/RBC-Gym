@@ -43,7 +43,6 @@ def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):
     # Set up h5 dataset
     path = f"{dir}/{split}/ra{ra}.h5"
     os.makedirs(os.path.dirname(path), exist_ok=True)
-
     with h5py.File(path, "w") as file:
         # Save commonly used parameters of the simulation
         file.attrs["episodes"] = total_epsiodes

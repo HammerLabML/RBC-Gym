@@ -45,65 +45,59 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # Set up h5 dataset
     path = f"{dir}/{split}/ra{ra}.h5"
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    file = h5py.File(path, "w")
+    with h5py.File(path, "w") as file:
+        # Save commonly used parameters of the simulation
+        file.attrs["episodes"] = total_epsiodes
+        file.attrs["steps"] = steps
+        file.attrs["ra"] = ra
+        file.attrs["shape"] = shape
+        file.attrs["dt"] = dt
+        file.attrs["timesteps"] = length
+        file.attrs["segments"] = segments
+        file.attrs["limit"] = limit
+        file.attrs["base_seed"] = base_seed
 
-    # Save commonly used parameters of the simulation
-    file.attrs["episodes"] = total_epsiodes
-    file.attrs["steps"] = steps
-    file.attrs["ra"] = ra
-    file.attrs["shape"] = shape
-    file.attrs["dt"] = dt
-    file.attrs["timesteps"] = length
-    file.attrs["segments"] = segments
-    file.attrs["limit"] = limit
-    file.attrs["base_seed"] = base_seed
+        # states
+        for idx in range(total_epsiodes):
+            # states
+            file.create_dataset(
+                f"states{idx}",
+                (steps, 6, shape[0], shape[1], shape[2]),
+                chunks=(1, 6, shape[0], shape[1], shape[2]),
+                compression="gzip",
+                dtype=np.float32,
+            )
+            # actions
+            file.create_dataset(
+                f"actions{idx}",
+                (steps, segments, segments),
+                chunks=(100, segments, segments),
+                compression="gzip",
+                dtype=np.float32,
+            )
+            # nusselts
+            file.create_dataset(
+                f"nusselts{idx}",
+                (steps,),
+                chunks=(steps,),
+                compression="gzip",
+                dtype=np.float32,
+            )
 
     # Run environment and save observations
     for base_idx in tqdm(
         range(int(total_epsiodes / parallel_envs)), desc="Total Episodes"
     ):
         ids = [base_idx * parallel_envs + i for i in range(parallel_envs)]
-        states = [
-            file.create_dataset(
-                f"states{id}",
-                (steps, 6, shape[0], shape[1], shape[2]),
-                chunks=True,
-                compression="gzip",
-                dtype=np.float32,
-            )
-            for id in ids
-        ]
-
-        actions = [
-            file.create_dataset(
-                f"actions{id}",
-                (steps, segments, segments),
-                chunks=True,
-                compression="gzip",
-                dtype=np.float32,
-            )
-            for id in ids
-        ]
-
-        nusselts = [
-            file.create_dataset(
-                f"nusselts{id}",
-                (steps,),
-                chunks=True,
-                compression="gzip",
-                dtype=np.float32,
-            )
-            for id in ids
-        ]
-
         action = env.action_space.sample() * 0  # no control
         obs, info = env.reset(seed=[base_seed + id for id in ids])
-        for step in range(steps):
+        for step in tqdm(range(steps), position=1, desc="Time Steps", leave=False):
             # Save observations
-            for i, _ in enumerate(ids):
-                states[i][step] = obs[i]
-                actions[i][step] = action[i]
-                nusselts[i][step] = info["nusselt"][i]
+            for idx, id in enumerate(ids):
+                with h5py.File(path, "r+") as file:
+                    file[f"states{id}"][step] = obs[idx]
+                    file[f"actions{id}"][step] = action[idx]
+                    file[f"nusselts{id}"][step] = info["nusselt"][idx]
 
             # Step environment
             obs, _, terminated, truncated, info = env.step(action)
@@ -111,7 +105,6 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
                 break
 
     env.close()
-    file.close()
 
 
 if __name__ == "__main__":
