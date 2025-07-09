@@ -1,7 +1,6 @@
 import rbc_gym  # noqa: F401
 import os
 import numpy as np
-from rbc_gym.wrappers import RBCNormalizeObservation
 import gymnasium as gym
 from tqdm import tqdm
 import h5py
@@ -15,7 +14,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     length = 300
     segments = 8
     limit = 0.9
-    steps = int(length // (dt*4)) # dt is in freefall time units
+    steps = int(length // (dt * 4))  # dt is in freefall time units
 
     # dataset params
     dir = "data/datasets/3D"
@@ -121,6 +120,7 @@ if __name__ == "__main__":
 
     # Argument parser for command line arguments
     import argparse
+
     parser = argparse.ArgumentParser(description="Create dataset for RBC environment.")
     parser.add_argument(
         "--ra",

@@ -5,7 +5,6 @@ import gymnasium as gym
 from tqdm import tqdm
 import h5py
 import multiprocessing as mp
-from rbc_gym.wrappers import RBCNormalizeObservation
 
 
 def create_dataset(ra=10000, split="train", total_epsiodes=50, parallel_envs=5):

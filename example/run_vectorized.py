@@ -27,7 +27,7 @@ def main() -> None:
 
     obs, info = env.reset()
     print(f"Observation shape: {obs.shape}")
-    for _ in tqdm(range(int(length/dt))):
+    for _ in tqdm(range(int(length / dt))):
         action = env.action_space.sample()
         observation, reward, terminated, truncated, info = env.step(action)
         env.render()
