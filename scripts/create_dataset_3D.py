@@ -12,7 +12,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
     shape = (16, 32, 32)
     dt = 0.375
-    length = 5  # 300
+    length = 300
     segments = 8
     limit = 0.9
     steps = int(length // (dt * 4))  # dt is in freefall time units
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # Create dataset
     print(f"Creating dataset for Rayleigh number: {ra}, split: {split}")
     if split == "train":
-        create_dataset(ra=ra, split="train", total_epsiodes=5, parallel_envs=3)
+        create_dataset(ra=ra, split="train", total_epsiodes=20, parallel_envs=10)
     elif split == "test":
         create_dataset(ra=ra, split="test", total_epsiodes=10, parallel_envs=10)
     elif split == "val":
