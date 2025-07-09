@@ -111,11 +111,13 @@ function get_state()
     end
 
     # Extract fields from the current model
-    state = zeros(4, N[1], N[2], N[3])
+    state = zeros(6, N[1], N[2], N[3])
     state[1, :, :, :] = model.tracers.b[1:N[1], 1:N[2], 1:N[3]]
     state[2, :, :, :] = model.velocities.u[1:N[1], 1:N[2], 1:N[3]]
     state[3, :, :, :] = model.velocities.v[1:N[1], 1:N[2], 1:N[3]]
     state[4, :, :, :] = model.velocities.w[1:N[1], 1:N[2], 1:N[3]]
+    state[5, :, :, :] = model.pressures.pHY′[1:N[1], 1:N[2], 1:N[3]]
+    state[6, :, :, :] = model.pressures.pNHS[1:N[1], 1:N[2], 1:N[3]]
 
     return state
 end

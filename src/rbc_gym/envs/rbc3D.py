@@ -24,6 +24,8 @@ class RBC3DField(IntEnum):
     U = 1
     V = 2
     W = 3
+    P_HY = 4
+    P_NHS = 5
 
 
 def colormap(value, vmin=1, vmax=2, colormap="turbo"):
@@ -50,6 +52,7 @@ class RayleighBenardConvection3DEnv(gym.Env):
         heater_duration: Optional[float] = 0.125,
         episode_length: Optional[int] = 300,
         dt_solver: Optional[float] = 0.01,
+        pressure: Optional[bool] = False,
         use_gpu: Optional[bool] = False,
         checkpoint: Optional[str] = None,
         render_mode: Optional[str] = None,
@@ -73,6 +76,7 @@ class RayleighBenardConvection3DEnv(gym.Env):
         self.heater_segments = heater_segments
         self.heater_limit = heater_limit
         self.heater_duration = heater_duration
+        self.include_pressure = pressure
 
         # Print environment configuration
         self.logger = logging.getLogger(__name__)
@@ -85,33 +89,34 @@ class RayleighBenardConvection3DEnv(gym.Env):
         )
 
         # Observation Space
-        lows = np.stack(
-            [
-                np.full(self.state_shape, self.temperature_difference[0]),
-                np.full(self.state_shape, -np.inf),
-                np.full(self.state_shape, -np.inf),
-                np.full(self.state_shape, -np.inf),
-            ],
-            dtype=np.float32,
-            axis=0,
-        )
-        highs = np.stack(
-            [
-                np.full(
-                    self.state_shape, self.temperature_difference[1] + self.heater_limit
-                ),
-                np.full(self.state_shape, np.inf),
-                np.full(self.state_shape, np.inf),
-                np.full(self.state_shape, np.inf),
-            ],
-            dtype=np.float32,
-            axis=0,
-        )
+        channels = 4
+        lows = [
+            np.full(self.state_shape, self.temperature_difference[0]),
+            np.full(self.state_shape, -np.inf),
+            np.full(self.state_shape, -np.inf),
+            np.full(self.state_shape, -np.inf),
+        ]
+        highs = [
+            np.full(
+                self.state_shape, self.temperature_difference[1] + self.heater_limit
+            ),
+            np.full(self.state_shape, np.inf),
+            np.full(self.state_shape, np.inf),
+            np.full(self.state_shape, np.inf),
+        ]
+
+        if self.include_pressure:
+            channels += 2
+            lows.append(np.full(self.state_shape, -np.inf))
+            lows.append(np.full(self.state_shape, -np.inf))
+            highs.append(np.full(self.state_shape, np.inf))
+            highs.append(np.full(self.state_shape, np.inf))
+
         self.observation_space = gym.spaces.Box(
             lows,
             highs,
             shape=(
-                4,
+                channels,
                 self.state_shape[0],
                 self.state_shape[1],
                 self.state_shape[2],
@@ -196,6 +201,8 @@ class RayleighBenardConvection3DEnv(gym.Env):
 
     def __get_obs(self) -> Any:
         obs = np.array(self.sim.get_state(), dtype=np.float32)
+        if not self.include_pressure:
+            obs = obs[:4, :, :]
         obs = obs.transpose(0, 3, 2, 1)  # julia uses column-major order
         return obs
 

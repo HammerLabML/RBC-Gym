@@ -56,3 +56,4 @@ wandb
 results
 slurmout
 data/datasets
+slurm

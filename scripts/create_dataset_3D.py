@@ -37,7 +37,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         # wrappers
         wrappers=[wrap],
         # env params
-        render_mode="human",
+        render_mode=None,
         rayleigh_number=ra,
         checkpoint=f"data/checkpoints/3D/{split}/ckpt_ra{ra}.h5",
         episode_length=length,
@@ -45,6 +45,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         heater_duration=dt,
         heater_segments=segments,
         heater_limit=limit,
+        pressure=True,
     )
 
     # Set up h5 dataset
@@ -65,13 +66,13 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
 
     # Run environment and save observations
     for base_idx in tqdm(
-        range(int(total_epsiodes / parallel_envs)), position=0, desc="Total"
+        range(int(total_epsiodes / parallel_envs)), desc="Total Episodes"
     ):
         ids = [base_idx * parallel_envs + i for i in range(parallel_envs)]
         states = [
             file.create_dataset(
                 f"states{id}",
-                (steps, 4, shape[0], shape[1], shape[2]),
+                (steps, 6, shape[0], shape[1], shape[2]),
                 chunks=True,
                 compression="gzip",
                 dtype=np.float32,
@@ -103,7 +104,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
 
         action = env.action_space.sample() * 0  # no control
         obs, info = env.reset(seed=[base_seed + id for id in ids])
-        for step in tqdm(range(steps), position=1, desc="Running", leave=False):
+        for step in range(steps):
             # Save observations
             for i, _ in enumerate(ids):
                 states[i][step] = obs[i]
@@ -112,7 +113,6 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
 
             # Step environment
             obs, _, terminated, truncated, info = env.step(action)
-            env.render()
             if truncated.any() or terminated.any():
                 break
 
@@ -121,8 +121,11 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
 
 
 if __name__ == "__main__":
-    import argparse
+    # Set up multiprocessing
+    mp.set_start_method("spawn", force=True)
 
+    # Argument parser for command line arguments
+    import argparse
     parser = argparse.ArgumentParser(description="Create dataset for RBC environment.")
     parser.add_argument(
         "--ra",
@@ -130,9 +133,22 @@ if __name__ == "__main__":
         default=2500,
         help="Rayleigh number for the simulation.",
     )
-
-    mp.set_start_method("spawn", force=True)
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="train",
+        help="Dataset split [train, val, test].",
+    )
     ra = parser.parse_args().ra
-    create_dataset(ra=ra, split="train", total_epsiodes=30, parallel_envs=10)
-    create_dataset(ra=ra, split="test", total_epsiodes=10, parallel_envs=10)
-    create_dataset(ra=ra, split="val", total_epsiodes=5, parallel_envs=5)
+    split = parser.parse_args().split
+
+    # Create dataset
+    print(f"Creating dataset for Rayleigh number: {ra}, split: {split}")
+    if split == "train":
+        create_dataset(ra=ra, split="train", total_epsiodes=25, parallel_envs=15)
+    elif split == "test":
+        create_dataset(ra=ra, split="test", total_epsiodes=10, parallel_envs=10)
+    elif split == "val":
+        create_dataset(ra=ra, split="val", total_epsiodes=5, parallel_envs=5)
+    else:
+        raise ValueError("Split must be one of [train, val, test].")

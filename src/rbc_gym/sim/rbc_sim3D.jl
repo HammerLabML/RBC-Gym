@@ -5,10 +5,12 @@ using Statistics
 using HDF5
 using ArgParse
 using ProgressMeter
+using CUDA
+
 
 # script directory
 dirpath = string(@__DIR__)
-
+#CUDA.set_runtime_version!(v"11.8")
 
 function simulate_3d_rb(dir, seed, random_inits, Ra, Pr, N, L, b, random_kick, Δt, Δt_snap, duration, use_gpu)
 
