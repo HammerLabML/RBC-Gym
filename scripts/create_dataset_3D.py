@@ -13,7 +13,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
     shape = (32, 48, 48)
     dt = 0.125 # 0.5 in ff time
-    length = 200
+    length = 300
     segments = 8
     limit = 0.9
     steps = int(length // (dt * 4))  # dt is in freefall time units
@@ -35,7 +35,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         # env params
         render_mode=None,
         rayleigh_number=ra,
-        checkpoint=f"data/checkpoints/3D_fine/{split}/ckpt_ra{ra}.h5",
+        checkpoint=None,
         episode_length=length,
         state_shape=shape,
         heater_duration=dt,
@@ -107,7 +107,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
                         with h5py.File(path, "r+") as f:
                             f[f"states{id}"][step] = obs[idx]
                             f[f"actions{id}"][step] = action[idx]
-                            f[f"nusselts{id}"][step] = info["nusselt_state"][idx]
+                            f[f"nusselts{id}"][step] = info["nusselt"][idx]
                         break
                     except BlockingIOError:
                         print(
