@@ -1,4 +1,5 @@
 import math
+import time
 import rbc_gym  # noqa: F401
 import os
 import numpy as np
@@ -92,17 +93,32 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         print(f"Processing episodes: {ids}")
         action = env.action_space.sample() * 0  # no control
         obs, info = env.reset(seed=[base_seed + id for id in ids])
-        for step in tqdm(range(steps), position=1, desc="Time Steps", leave=False):
+        for step in range(steps):
             # Save observations
             for idx, id in enumerate(ids):
                 # only write if id is within the total episodes
                 if id >= total_epsiodes:
                     continue
                 # Save state, action, and nusselt number
-                with h5py.File(path, "r+") as file:
-                    file[f"states{id}"][step] = obs[idx]
-                    file[f"actions{id}"][step] = action[idx]
-                    file[f"nusselts{id}"][step] = info["nusselt"][idx]
+                MAX_TRIES = 5
+                DELAY = 2  # seconds
+                for attempt in range(MAX_TRIES):
+                    try:
+                        with h5py.File(path, "r+") as f:
+                            f[f"states{id}"][step] = obs[idx]
+                            f[f"actions{id}"][step] = action[idx]
+                            f[f"nusselts{id}"][step] = info["nusselt_state"][idx]
+                        break
+                    except BlockingIOError:
+                        print(
+                            f"Write attempt {attempt+1} failed for (episode {id}, step {step}). Retrying..."
+                        )
+                        if attempt < MAX_TRIES:
+                            time.sleep(DELAY)
+                        else:
+                            raise RuntimeError(
+                                f"Failed to write after {MAX_TRIES} attempts for episode {id}, step {step}. Skipping."
+                            )
 
             # Step environment
             obs, _, terminated, truncated, info = env.step(action)
