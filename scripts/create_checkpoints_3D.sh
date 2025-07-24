@@ -6,13 +6,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export JULIA_PROJECT="${SCRIPT_DIR}/../.venv/julia_env"
 
 # CHANGE PARAMETERS HERE
-dir=${SCRIPT_DIR}/../data/checkpoints/3D/
-ra=500
+dir=${SCRIPT_DIR}/../data/checkpoints/3D_fine/
+ra=2500
 pr=0.7
-N=(32 32 16)
-b=(1 2)
+N=(48 48 32)
+b=(0 1)
 delta_t_snap=0.125
-duration=300
+duration=100
 
 # Now run your Julia script
 julia ${SCRIPT_DIR}/../src/rbc_gym/sim/rbc_sim3D.jl --dir ${dir}/train --seed 42 --random_inits 20 --Ra ${ra} --N "${N[@]}" --b "${b[@]}" --delta_t_snap ${delta_t_snap} --duration ${duration} --use_cpu
