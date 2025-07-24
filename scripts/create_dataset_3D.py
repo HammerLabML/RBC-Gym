@@ -11,15 +11,15 @@ import multiprocessing as mp
 
 def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
-    shape = (16, 32, 32)
-    dt = 0.375
-    length = 300
+    shape = (32, 48, 48)
+    dt = 0.125 # 0.5 in ff time
+    length = 200
     segments = 8
     limit = 0.9
     steps = int(length // (dt * 4))  # dt is in freefall time units
 
     # dataset params
-    dir = "data/datasets/3D"
+    dir = "data/datasets/3D_fine"
     base_seed = 42
 
     # Set up environment
@@ -35,7 +35,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         # env params
         render_mode=None,
         rayleigh_number=ra,
-        checkpoint=f"data/checkpoints/3D/{split}/ckpt_ra{ra}.h5",
+        checkpoint=f"data/checkpoints/3D_fine/{split}/ckpt_ra{ra}.h5",
         episode_length=length,
         state_shape=shape,
         heater_duration=dt,
@@ -53,7 +53,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         file.attrs["steps"] = steps
         file.attrs["ra"] = ra
         file.attrs["shape"] = shape
-        file.attrs["dt"] = dt
+        file.attrs["dt"] = dt * 4 # dt is in freefall time units
         file.attrs["timesteps"] = length
         file.attrs["segments"] = segments
         file.attrs["limit"] = limit
@@ -154,10 +154,10 @@ if __name__ == "__main__":
     # Create dataset
     print(f"Creating dataset for Rayleigh number: {ra}, split: {split}")
     if split == "train":
-        create_dataset(ra=ra, split="train", total_epsiodes=20, parallel_envs=10)
+        create_dataset(ra=ra, split="train", total_epsiodes=60, parallel_envs=20)
     elif split == "test":
-        create_dataset(ra=ra, split="test", total_epsiodes=10, parallel_envs=10)
+        create_dataset(ra=ra, split="test", total_epsiodes=20, parallel_envs=20)
     elif split == "val":
-        create_dataset(ra=ra, split="val", total_epsiodes=5, parallel_envs=5)
+        create_dataset(ra=ra, split="val", total_epsiodes=20, parallel_envs=20)
     else:
         raise ValueError("Split must be one of [train, val, test].")
