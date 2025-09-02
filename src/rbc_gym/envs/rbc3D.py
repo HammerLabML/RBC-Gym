@@ -264,7 +264,7 @@ class RayleighBenardConvection3DEnv(gym.Env):
                 scalars="T",
                 cmap="turbo",
                 clim=(cmin, cmax),
-                opacity="sigmoid_1",
+                opacity="linear",
             )
             self._plotter.add_axes()
 

@@ -10,23 +10,30 @@ using ProgressMeter
 # script directory
 dirpath = string(@__DIR__)
 
+# Control state
+mutable struct FourierControl
+    modes::Int
+    coeffs::Vector{Float64}   # length 2*modes: [a1,b1,a2,b2,...]
+    limit::Float64            # fraction of Δb allowed as max amplitude
+    Lx::Float64               # domain length in x
+end
+
+FourierControl(modes::Int, limit::Float64, Lx::Float64) =
+    FourierControl(modes, zeros(2*modes), limit, Lx)
+
 
 function simulate_2d_rb(dir, seed, random_inits, Ra, Pr, N, L, min_b, Δb, random_kick, Δt, Δt_snap,
-    duration, use_gpu)
+    duration, use_gpu, control_modes::Int, control_limit::Float64)
 
     ν = sqrt(Pr / Ra) # c.f. line 33: https://github.com/spectralDNS/shenfun/blob/master/demo/RayleighBenard2D.py
     κ = 1 / sqrt(Pr * Ra) # c.f. line 37: https://github.com/spectralDNS/shenfun/blob/master/demo/RayleighBenard2D.py
 
     totalsteps = Int(div(duration, Δt_snap))
 
-    global domain, action, actuators, actuator_limit
-    domain = L
-    actuators = 12
-    action = zeros(actuators)
-    actuator_limit = 0.75
+    control = FourierControl(control_modes, control_limit, L[1])
 
     grid = define_sample_grid(N, L, use_gpu)
-    u_bcs, b_bcs = define_boundary_conditions(min_b, Δb)
+    u_bcs, b_bcs = define_boundary_conditions(min_b, Δb, control)
 
     model = define_model(grid, ν, κ, u_bcs, b_bcs)
 
@@ -84,64 +91,60 @@ function define_sample_grid(N, L, use_gpu)
 end
 
 
-function collate_actions_colin(action, x, t)
-    global domain, actuators, actuator_limit
+"""
+Set the Fourier coefficients used for the bottom boundary actuation.
 
-    ampl = actuator_limit
-    dx = 0.03
-
-    values = ampl .* action
-    Mean = mean(values)
-    K2 = maximum([1.0, maximum(abs.(values .- Mean)) / ampl])
-
-    segment_length = domain[1] / actuators
-
-    # determine segment of x
-    x_segment = Int(floor(x / segment_length) + 1)
-
-    if x_segment == 1
-        T0 = 2 + (ampl * action[end] - Mean) / K2
-    else
-        T0 = 2 + (ampl * action[x_segment-1] - Mean) / K2
-    end
-
-    T1 = 2 + (ampl * action[x_segment] - Mean) / K2
-
-    if x_segment == actuators
-        T2 = 2 + (ampl * action[1] - Mean) / K2
-    else
-        T2 = 2 + (ampl * action[x_segment+1] - Mean) / K2
-    end
-
-    # x position in the segment
-    x_pos = x - (x_segment - 1) * segment_length
-
-    # determine if x is in the transition regions
-    if x_pos < dx
-        #transition region left
-        return T0 + ((T0 - T1) / (4 * dx^3)) * (x_pos - 2 * dx) * (x_pos + dx)^2
-
-    elseif x_pos >= segment_length - dx
-        #transition region right
-        return T1 + ((T1 - T2) / (4 * dx^3)) * (x_pos - segment_length - 2 * dx) * (x_pos - segment_length + dx)^2
-
-    else
-        # middle of the segment
-        return T1
-
-    end
+coeffs must be a Vector of length 2N: [a1, b1, a2, b2, ..., aN, bN].
+"""
+function set_fourier_coefficients!(control::FourierControl, coeffs::AbstractVector{<:Real})
+    @assert length(coeffs) == 2 * control.modes "Expected $(2 * control.modes) coefficients, got $(length(coeffs))"
+    control.coeffs .= coeffs
+    return nothing
 end
 
-function bottom_T(x, t)
-    global action
-    collate_actions_colin(action, x, t)
+"""
+Factory that returns a bottom boundary function `T(x, t)` capturing min_b and Δb,
+and reading live coefficients from `control`.
+"""
+function make_bottom_T(control::FourierControl, min_b::Real, Δb::Real)
+    function Tb(x, t)
+        # Truncated Fourier series without constant term (zero-mean fluctuation)
+        s = 0.0
+        @inbounds for n in 1:control.modes
+            θ = 2π * n * x / control.Lx
+            a = control.coeffs[2n - 1]
+            b = control.coeffs[2n]
+            s += a * cos(θ) + b * sin(θ)
+        end
+
+        # Global amplitude safeguard relative to Δb to respect physical limits
+        # Upper bound proxy: sum(|a|+|b|); scale if necessary.
+        sumabs = 0.0
+        @inbounds for c in control.coeffs
+            sumabs += abs(c)
+        end
+        K = max(1.0, sumabs / (control.limit * Δb))
+        s /= K
+
+        T0 = min_b + Δb
+        Tb_val = T0 + s
+
+        # Optionally clamp instead of scaling:
+        # Tb_val = clamp(Tb_val, min_b, min_b + Δb)
+
+        return Tb_val
+    end
+
+    return Tb
 end
 
-function define_boundary_conditions(min_b, Δb)
+
+function define_boundary_conditions(min_b, Δb, control::FourierControl)
     u_bcs = FieldBoundaryConditions(top=ValueBoundaryCondition(0),
         bottom=ValueBoundaryCondition(0))
+    bottom_fun = make_bottom_T(control, min_b, Δb)
     b_bcs = FieldBoundaryConditions(top=ValueBoundaryCondition(min_b),
-        bottom=ValueBoundaryCondition(bottom_T))
+        bottom=ValueBoundaryCondition(bottom_fun))
     return u_bcs, b_bcs
 end
 
@@ -200,23 +203,6 @@ function simulate_model(simulation, model, Δt, Δt_snap, totalsteps, N)
     end
 
     return true
-end
-
-
-function array_gradient(a)
-    result = zeros(length(a))
-
-    for i in 1:length(a)
-        if i == 1
-            result[i] = a[i+1] - a[i]
-        elseif i == length(a)
-            result[i] = a[i] - a[i-1]
-        else
-            result[i] = (a[i+1] - a[i-1]) / 2
-        end
-    end
-
-    result
 end
 
 
@@ -296,6 +282,14 @@ function parse_arguments()
         help = "Runs the simulation on CPU when argument given."
         action = :store_false
         dest_name = "use_gpu"
+        "--fourier_modes"
+        help = "Number of Fourier mode pairs (cos/sin) used for bottom boundary control"
+        arg_type = Int
+        default = 6
+        "--actuator_limit"
+        help = "Fraction of Δb allowed as max global amplitude for the bottom boundary fluctuation"
+        arg_type = Float64
+        default = 0.75
     end
 
     return parse_args(s)
@@ -304,6 +298,7 @@ end
 is_script = abspath(PROGRAM_FILE) == @__FILE__
 if (is_script)
     args = parse_arguments()
+
     simulate_2d_rb(
         args["dir"],
         args["seed"],
@@ -318,5 +313,8 @@ if (is_script)
         args["Δt"],
         args["Δt_snap"],
         args["duration"],
-        args["use_gpu"],)
+        args["use_gpu"],
+        args["fourier_modes"],
+        args["actuator_limit"],
+    )
 end

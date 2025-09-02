@@ -5,6 +5,9 @@ using Statistics
 
 include("rbc_sim2D.jl")
 
+# Control state (Fourier-parametrized bottom BC)
+global control = nothing
+
 # Global variables to hold simulation state
 global simulation = nothing
 global model = nothing
@@ -14,7 +17,7 @@ global time = 0.0
 """
 Initialize a Rayleigh-Bénard simulation with the given parameters
 """
-function initialize_simulation(; Ra=10^5, sensors=[48, 8], grid=[96, 64], heaters=12, heater_limit=0.75, dt=1, seed=42, checkpoint_path=nothing, use_gpu=false)
+function initialize_simulation(; Ra=10^5, sensors=[48, 8], grid=[96, 64], modes=6, actuator_limit=0.75, dt=1, seed=42, checkpoint_path=nothing, use_gpu=false)
     oceananigans_logger = Oceananigans.Logger.OceananigansLogger(
         stdout,
         Logging.Warn;
@@ -26,10 +29,7 @@ function initialize_simulation(; Ra=10^5, sensors=[48, 8], grid=[96, 64], heater
     global N = grid
     global N_obs = sensors
     global L = [2 * pi, 2]
-    global domain = L
     global Δb = 1
-    global actuators = heaters
-    global actuator_limit = heater_limit
     global Δt = dt
 
     Pr = 0.7
@@ -43,12 +43,11 @@ function initialize_simulation(; Ra=10^5, sensors=[48, 8], grid=[96, 64], heater
     # Set random seed for reproducibility
     Random.seed!(seed)
 
-    # Initialize action
-    global action = zeros(actuators)
-
     # Initialize simulation components
     grid = define_sample_grid(N, L, use_gpu)
-    u_bcs, b_bcs = define_boundary_conditions(min_b, Δb)
+    # Create Fourier control and boundary conditions
+    global control = FourierControl(modes, actuator_limit, L[1])
+    u_bcs, b_bcs = define_boundary_conditions(min_b, Δb, control)
 
     # Create model
     global model = define_model(grid, ν, κ, u_bcs, b_bcs)
@@ -74,7 +73,11 @@ Step the simulation forward by one timestep
 """
 function step_simulation(actuation)
     global simulation, model, Δt, N, step, time
-    global action = actuation
+    # Update Fourier coefficients for bottom BC (expects length 2*modes)
+    if control === nothing
+        error("Control not initialized. Call initialize_simulation first.")
+    end
+    set_fourier_coefficients!(control, actuation)
 
     if simulation === nothing
         error("Simulation not initialized. Call initialize_simulation first.")
@@ -134,6 +137,22 @@ Get the current simulation time
 function get_info()
     global time, step
     return (time, step)
+end
+
+# Simple centered-difference gradient for a 1D array/vector
+function array_gradient(a)
+    result = similar(a)
+    len = length(a)
+    @inbounds begin
+        if len >= 2
+            result[1] = a[2] - a[1]
+            result[end] = a[end] - a[end-1]
+        end
+        for i in 2:len-1
+            result[i] = (a[i+1] - a[i-1]) / 2
+        end
+    end
+    return result
 end
 
 """

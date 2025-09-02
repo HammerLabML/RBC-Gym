@@ -12,14 +12,20 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
     shape = (32, 48, 48)
     dt = 0.125 # 0.5 in ff time
-    length = 200
+    length = 300
     segments = 8
     limit = 0.9
     steps = int(length // (dt * 4))  # dt is in freefall time units
 
     # dataset params
     dir = "data/datasets/3D_fine"
-    base_seed = 42
+
+    if split=="train":
+        base_seed = 42
+    elif split=="val":
+        base_seed = 420
+    elif split=="test":
+        base_seed = 4200
 
     # Set up environment
     env = gym.make_vec(

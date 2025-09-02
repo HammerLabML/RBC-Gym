@@ -38,8 +38,8 @@ class RayleighBenardConvection2DEnv(gym.Env):
         episode_length: Optional[int] = 300,
         observation_shape: Optional[list] = [8, 48],
         state_shape: Optional[list] = [64, 96],
-        heater_segments: Optional[int] = 12,
-        heater_limit: Optional[float] = 0.75,
+        modes: Optional[int] = 6,
+        actuator_limit: Optional[float] = 0.75,
         heater_duration: Optional[float] = 1.5,
         pressure: Optional[bool] = False,
         use_gpu: Optional[bool] = False,
@@ -60,8 +60,8 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.observation_shape = observation_shape
         self.state_shape = state_shape
         self.temperature_difference = [1, 2]
-        self.heater_segments = heater_segments
-        self.heater_limit = heater_limit
+        self.modes = modes                           # number of Fourier mode pairs (cos/sin)
+        self.actuator_limit = actuator_limit         # fraction of Δb allowed for bottom fluctuation
         self.heater_duration = heater_duration
         self.include_pressure = pressure
         self.episode_steps = int(episode_length / heater_duration)
@@ -71,9 +71,9 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.logger.info(f"Using Rayleigh number Ra={self.ra}")
         self.logger.info(f"Using episode length {self.episode_length} timesteps")
 
-        # The agent takes actions between [-1, 1] on the bottom segments
+        # The agent takes actions between [-1, 1] on the Fourier coefficients
         self.action_space = gym.spaces.Box(
-            -1, 1, shape=(self.heater_segments,), dtype=np.float32
+            -1, 1, shape=(2 * self.modes,), dtype=np.float32
         )
 
         # Observation Space
@@ -84,7 +84,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
             np.ones(self.observation_shape) * (-np.inf),
         ]
         highs = [
-            np.ones(self.observation_shape) * 2 + self.heater_limit,
+            np.ones(self.observation_shape) * 2 + self.actuator_limit,
             np.ones(self.observation_shape) * np.inf,
             np.ones(self.observation_shape) * np.inf,
         ]
@@ -144,8 +144,8 @@ class RayleighBenardConvection2DEnv(gym.Env):
             Ra=self.ra,
             sensors=self.observation_shape[::-1],  # julia uses column-major order
             grid=self.state_shape[::-1],  # julia uses column-major order
-            heaters=self.heater_segments,
-            heater_limit=self.heater_limit,
+            modes=self.modes,
+            actuator_limit=self.actuator_limit,
             dt=self.heater_duration,
             seed=self.np_random_seed,
             checkpoint_path=path,
@@ -236,7 +236,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
         data = self.__get_state()[RBCField.T]
         data = np.transpose(data)
         data = np.flip(data, axis=1)  # orgin in pygame is top left
-        data = colormap(data, vmin=1, vmax=2 + self.heater_limit)
+        data = colormap(data, vmin=1, vmax=2 + self.actuator_limit)
 
         if self.render_mode == "human":
             canvas = pygame.Surface((96, 64))
