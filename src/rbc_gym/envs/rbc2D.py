@@ -39,6 +39,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
         observation_shape: Optional[list] = [8, 48],
         state_shape: Optional[list] = [64, 96],
         modes: Optional[int] = 6,
+        coeff_scheme: Optional[str] = "decay",
         actuator_limit: Optional[float] = 0.75,
         heater_duration: Optional[float] = 1.5,
         pressure: Optional[bool] = False,
@@ -64,7 +65,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.actuator_limit = actuator_limit         # fraction of Δb allowed for bottom fluctuation
 
         # Coefficient scaling: map NN outputs in [-1, 1] to physical coeffs
-        self.coeff_scheme = "decay"  # "equal" or "decay" (1/n)
+        self.coeff_scheme = coeff_scheme
         self.per_coeff_max = self._compute_coeff_bounds(self.modes, self.actuator_limit, scheme=self.coeff_scheme)
 
         self.heater_duration = heater_duration
