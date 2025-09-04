@@ -117,13 +117,13 @@ function make_bottom_T(control::FourierControl, min_b::Real, Δb::Real)
             s += a * cos(θ) + b * sin(θ)
         end
 
-        # Global amplitude safeguard relative to Δb to respect physical limits
+        # Global amplitude safeguard to respect physical limits
         # Upper bound proxy: sum(|a|+|b|); scale if necessary.
         sumabs = 0.0
         @inbounds for c in control.coeffs
             sumabs += abs(c)
         end
-        K = max(1.0, sumabs / (control.limit * Δb))
+        K = max(1.0, sumabs / (control.limit))
         s /= K
 
         T0 = min_b + Δb

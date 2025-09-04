@@ -62,6 +62,11 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.temperature_difference = [1, 2]
         self.modes = modes                           # number of Fourier mode pairs (cos/sin)
         self.actuator_limit = actuator_limit         # fraction of Δb allowed for bottom fluctuation
+
+        # Coefficient scaling: map NN outputs in [-1, 1] to physical coeffs
+        self.coeff_scheme = "decay"  # "equal" or "decay" (1/n)
+        self.per_coeff_max = self._compute_coeff_bounds(self.modes, self.actuator_limit, scheme=self.coeff_scheme)
+
         self.heater_duration = heater_duration
         self.include_pressure = pressure
         self.episode_steps = int(episode_length / heater_duration)
@@ -121,6 +126,25 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.screen = None
         self.clock = None
 
+    def _compute_coeff_bounds(self, modes: int, actuator_limit: float, Δb: float = 1.0, scheme: str = "decay") -> np.ndarray:
+        """
+        Per-coefficient maximum magnitudes so that the Julia-side scaling K≈1 most of the time.
+        Returns an array of shape (2*modes,) with bounds for [a1,b1,a2,b2,...].
+
+        scheme="equal": same bound for all coefficients (L1 budget split equally)
+        scheme="decay": give low-k more room via 1/n decay (recommended)
+        """
+        if scheme == "equal":
+            m = actuator_limit * Δb / (2 * modes)
+            return np.full(2 * modes, m, dtype=np.float32)
+        # decay ~ 1/n
+        HN = sum(1.0 / k for k in range(1, modes + 1))
+        bounds = []
+        for n in range(1, modes + 1):
+            w_pair = actuator_limit * Δb * (1.0 / n) / HN  # pair budget
+            bounds += [w_pair / 2, w_pair / 2]  # split equally to a_n and b_n
+        return np.array(bounds, dtype=np.float32)
+
     def reset(
         self,
         seed: int | None = None,
@@ -154,6 +178,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
 
         # Reset action
         self.last_action = self.action_space.sample() * 0
+        self.last_coeffs = np.zeros_like(self.per_coeff_max, dtype=np.float32)
 
         return self.__get_obs(), self.__get_info()
 
@@ -165,8 +190,13 @@ class RayleighBenardConvection2DEnv(gym.Env):
             action = np.zeros(self.action_space.shape, dtype=np.float32)
             warnings.warn("No action provided, using zero action")
 
+        # Scale NN action in [-1,1] to physical Fourier coefficients
+        action = np.asarray(action, dtype=np.float32).clip(-1.0, 1.0)
+        coeffs = action * self.per_coeff_max  # elementwise
+        self.last_coeffs = coeffs.copy()
+
         # Simulation Step
-        success = self.sim.step_simulation(np.array(action))
+        success = self.sim.step_simulation(np.array(coeffs))
         if not success:
             raise RuntimeError("Error in simulation step, probably NaN values")
 
@@ -203,12 +233,16 @@ class RayleighBenardConvection2DEnv(gym.Env):
         t, step = self.sim.get_info()
         nu_state = self.sim.get_nusselt(state=True)
         nu_obs = self.sim.get_nusselt(state=False)
+        sumabs = float(np.abs(self.last_coeffs).sum())
+        K_est = max(1.0, sumabs / (self.actuator_limit))
         return {
             "t": t,
             "step": step,
             "nusselt_state": nu_state,
             "nusselt_obs": nu_obs,
             "state": self.__get_state(),
+            "coeff_sumabs": sumabs,
+            "K_est": K_est,
         }
 
     def render(self):

@@ -18,7 +18,6 @@ plotter = start_live_control(
     Lx=2*np.pi,  # matches Julia
     Δb=1.0,
     T0=2.0,
-    W=512,
     show_modes=True,
     max_modes=6,  # or fewer if you want less clutter
 )
@@ -30,6 +29,9 @@ for step in tqdm(range(env.unwrapped.episode_steps)):
     update_live_control(plotter, action)
 
     observation, reward, terminated, truncated, info = env.step(action)
+    # print reward and nusselt number
+    print(f"Step {step}: Reward = {reward:.3f}, Nu = {info['nusselt_state']:.3f}")
+    print(info["coeff_sumabs"], info["coeff_scaling"])
     env.render()
     if truncated:
         break

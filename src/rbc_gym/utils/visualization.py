@@ -90,7 +90,7 @@ class ControlPlotter:
         Lx=2 * np.pi,
         Δb=1.0,
         T0=2.0,
-        W=512,
+        W=96,
         show_modes=True,
         max_modes=None,       # cap number of per-mode lines shown (None = show all)
     ):
