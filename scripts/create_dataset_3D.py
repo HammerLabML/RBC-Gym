@@ -12,15 +12,29 @@ import multiprocessing as mp
 def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
     shape = (32, 48, 48)
-    dt = 0.125 # 0.5 in ff time
-    length = 300
+    dt = 0.125  # 0.5 in ff time
+    length = 1000
     segments = 8
     limit = 0.9
+    t_diff = [0, 1]
     steps = int(length // (dt * 4))  # dt is in freefall time units
 
+    print(
+        f"Creating dataset for parameters: "
+        f"ra={ra}, shape={shape}, dt={dt}, length={length}, "
+        f"segments={segments}, limit={limit}, steps={steps}, tdiff={t_diff}, "
+        f"total_epsiodes={total_epsiodes}, parallel_envs={parallel_envs}"
+    )
+
     # dataset params
-    dir = "data/datasets/3D_fine"
-    base_seed = 42
+    dir = "/vol/cfd/rbc/newnew/3D_long"
+
+    if split == "train":
+        base_seed = 42
+    elif split == "val":
+        base_seed = 1000
+    elif split == "test":
+        base_seed = 2000
 
     # Set up environment
     env = gym.make_vec(
@@ -38,6 +52,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         checkpoint=None,
         episode_length=length,
         state_shape=shape,
+        temperature_difference=t_diff,
         heater_duration=dt,
         heater_segments=segments,
         heater_limit=limit,
@@ -53,7 +68,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         file.attrs["steps"] = steps
         file.attrs["ra"] = ra
         file.attrs["shape"] = shape
-        file.attrs["dt"] = dt * 4 # dt is in freefall time units
+        file.attrs["dt"] = dt * 4  # dt is in freefall time units
         file.attrs["timesteps"] = length
         file.attrs["segments"] = segments
         file.attrs["limit"] = limit
@@ -111,7 +126,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
                         break
                     except BlockingIOError:
                         print(
-                            f"Write attempt {attempt+1} failed for (episode {id}, step {step}). Retrying..."
+                            f"Write attempt {attempt + 1} failed for (episode {id}, step {step}). Retrying..."
                         )
                         if attempt < MAX_TRIES:
                             time.sleep(DELAY)
