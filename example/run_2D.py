@@ -31,7 +31,6 @@ for step in tqdm(range(env.unwrapped.episode_steps)):
     observation, reward, terminated, truncated, info = env.step(action)
     # print reward and nusselt number
     print(f"Step {step}: Reward = {reward:.3f}, Nu = {info['nusselt_state']:.3f}")
-    print(info["coeff_sumabs"], info["coeff_scaling"])
     env.render()
     if truncated:
         break
