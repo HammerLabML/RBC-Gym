@@ -6,11 +6,11 @@ from tqdm import tqdm
 
 env = gym.make(
     "rbc_gym/RayleighBenardConvection3D-v0",
-    render_mode="rgb_array",
+    render_mode="human",
     rayleigh_number=2500,
     heater_duration=0.25,
-    episode_length=50,
-    checkpoint="data/checkpoints/train/3D_ckpt_ra2500.h5",
+    episode_length=500,
+    checkpoint="data/checkpoints/3D/train/ckpt_ra2500.h5",
 )
 
 obs, info = env.reset()
