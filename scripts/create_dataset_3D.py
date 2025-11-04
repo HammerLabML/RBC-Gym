@@ -12,6 +12,7 @@ import multiprocessing as mp
 def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     # env params
     shape = (32, 48, 48)
+    domain = [2, 2 * np.pi, 2 * np.pi]
     dt = 0.125  # 0.5 in ff time
     length = 300
     segments = 8
@@ -27,7 +28,7 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
     )
 
     # dataset params
-    dir = "/vol/cfd/rbc/newnew/3D_long"
+    dir = "/vol/cfd/rbc/3D_"
 
     if split == "train":
         base_seed = 42
@@ -49,9 +50,10 @@ def create_dataset(ra=2500, split="train", total_epsiodes=1, parallel_envs=1):
         # env params
         render_mode=None,
         rayleigh_number=ra,
-        checkpoint=None,
+        checkpoint=None,  # f"data/checkpoints/3D/{split}/ckpt_ra2500.h5",
         episode_length=length,
         state_shape=shape,
+        domain=domain,
         temperature_difference=t_diff,
         heater_duration=dt,
         heater_segments=segments,
