@@ -39,8 +39,8 @@ class RayleighBenardConvection2DEnv(gym.Env):
         observation_shape: Optional[list] = [8, 48],
         state_shape: Optional[list] = [64, 96],
         modes: Optional[int] = 6,
-        coeff_scheme: Optional[str] = "decay",
-        actuator_limit: Optional[float] = 0.75,
+        coeff_scheme: Optional[str] = "equal",
+        heater_limit: Optional[float] = 0.75,
         heater_duration: Optional[float] = 1.5,
         pressure: Optional[bool] = False,
         use_gpu: Optional[bool] = False,
@@ -61,16 +61,19 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.observation_shape = observation_shape
         self.state_shape = state_shape
         self.temperature_difference = [1, 2]
-        self.modes = modes                           # number of Fourier mode pairs (cos/sin)
-        self.actuator_limit = actuator_limit         # fraction of Δb allowed for bottom fluctuation
-
-        # Coefficient scaling: map NN outputs in [-1, 1] to physical coeffs
-        self.coeff_scheme = coeff_scheme
-        self.per_coeff_max = self._compute_coeff_bounds(self.modes, self.actuator_limit, scheme=self.coeff_scheme)
-
+        self.modes = modes  # number of Fourier mode pairs (cos/sin)
+        self.heater_limit = (
+            heater_limit  # fraction of Δb allowed for bottom fluctuation
+        )
         self.heater_duration = heater_duration
         self.include_pressure = pressure
         self.episode_steps = int(episode_length / heater_duration)
+
+        # Coefficient scaling: map NN outputs in [-1, 1] to physical coeffs
+        self.coeff_scheme = coeff_scheme
+        self.per_coeff_max = self._compute_coeff_bounds(
+            self.modes, self.heater_limit, scheme=self.coeff_scheme
+        )
 
         # Print environment configuration
         self.logger = logging.getLogger(__name__)
@@ -90,7 +93,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
             np.ones(self.observation_shape) * (-np.inf),
         ]
         highs = [
-            np.ones(self.observation_shape) * 2 + self.actuator_limit,
+            np.ones(self.observation_shape) * 2 + self.heater_limit,
             np.ones(self.observation_shape) * np.inf,
             np.ones(self.observation_shape) * np.inf,
         ]
@@ -127,7 +130,9 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.screen = None
         self.clock = None
 
-    def _compute_coeff_bounds(self, modes: int, actuator_limit: float, Δb: float = 1.0, scheme: str = "decay") -> np.ndarray:
+    def _compute_coeff_bounds(
+        self, modes: int, actuator_limit: float, Δb: float = 1.0, scheme: str = "decay"
+    ) -> np.ndarray:
         """
         Per-coefficient maximum magnitudes so that the Julia-side scaling K≈1 most of the time.
         Returns an array of shape (2*modes,) with bounds for [a1,b1,a2,b2,...].
@@ -170,7 +175,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
             sensors=self.observation_shape[::-1],  # julia uses column-major order
             grid=self.state_shape[::-1],  # julia uses column-major order
             modes=self.modes,
-            actuator_limit=self.actuator_limit,
+            actuator_limit=self.heater_limit,
             dt=self.heater_duration,
             seed=self.np_random_seed,
             checkpoint_path=path,
@@ -235,7 +240,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
         nu_state = self.sim.get_nusselt(state=True)
         nu_obs = self.sim.get_nusselt(state=False)
         sumabs = float(np.abs(self.last_coeffs).sum())
-        K_est = max(1.0, sumabs / (self.actuator_limit))
+        K_est = max(1.0, sumabs / (self.heater_limit))
         return {
             "t": t,
             "step": step,
@@ -271,7 +276,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
         data = self.__get_state()[RBCField.T]
         data = np.transpose(data)
         data = np.flip(data, axis=1)  # orgin in pygame is top left
-        data = colormap(data, vmin=1, vmax=2 + self.actuator_limit)
+        data = colormap(data, vmin=1, vmax=2 + self.heater_limit)
 
         if self.render_mode == "human":
             canvas = pygame.Surface((96, 64))

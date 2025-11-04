@@ -83,6 +83,7 @@ class ControlPlotter:
       - Bottom: zero-mean fluctuation and individual mode contributions
     Reuse the same artists between updates to avoid spawning new figures.
     """
+
     def __init__(
         self,
         modes,
@@ -92,7 +93,7 @@ class ControlPlotter:
         T0=2.0,
         W=96,
         show_modes=True,
-        max_modes=None,       # cap number of per-mode lines shown (None = show all)
+        max_modes=None,  # cap number of per-mode lines shown (None = show all)
     ):
         self.modes = modes
         self.actuator_limit = actuator_limit
@@ -105,14 +106,14 @@ class ControlPlotter:
 
         # Precompute x grid and create figure + axes
         self.x = np.linspace(0.0, Lx, W, endpoint=False)
-        self.fig, (self.ax0, self.ax1) = plt.subplots(
-            2, 1, figsize=(8, 6), sharex=True
-        )
+        self.fig, (self.ax0, self.ax1) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
         self.fig.canvas.manager.set_window_title("Fourier Control (live)")
 
         # Top axis: T_b(x)
         (self.line_T,) = self.ax0.plot(self.x, np.full_like(self.x, T0), label="T_b(x)")
-        (self.line_T0,) = self.ax0.plot(self.x, np.full_like(self.x, T0), linestyle="--", label="Base T0")
+        (self.line_T0,) = self.ax0.plot(
+            self.x, np.full_like(self.x, T0), linestyle="--", label="Base T0"
+        )
         self.ax0.set_ylabel("T at y=0")
         self.ax0.set_title("Bottom boundary temperature (live)")
         self.ax0.legend(loc="upper right")
@@ -121,11 +122,15 @@ class ControlPlotter:
         self.ax0.set_ylim(T0 - lim, T0 + lim)
 
         # Bottom axis: fluctuation + modes
-        (self.line_total,) = self.ax1.plot(self.x, np.zeros_like(self.x), label="Total fluctuation s(x)")
+        (self.line_total,) = self.ax1.plot(
+            self.x, np.zeros_like(self.x), label="Total fluctuation s(x)"
+        )
         self.mode_lines = []
         modes_to_draw = min(self.max_modes, modes)
         for i in range(modes_to_draw):
-            (line_i,) = self.ax1.plot(self.x, np.zeros_like(self.x), label=f"mode n={i+1}")
+            (line_i,) = self.ax1.plot(
+                self.x, np.zeros_like(self.x), label=f"mode n={i + 1}"
+            )
             self.mode_lines.append(line_i)
         self.ax1.set_xlabel("x")
         self.ax1.set_ylabel("fluctuation")
@@ -168,6 +173,7 @@ class ControlPlotter:
         self.fig.canvas.draw_idle()
         plt.pause(0.001)
 
+
 def start_live_control(
     modes,
     actuator_limit,
@@ -192,6 +198,7 @@ def start_live_control(
         show_modes=show_modes,
         max_modes=max_modes,
     )
+
 
 def update_live_control(plotter: "ControlPlotter", action):
     """
