@@ -12,9 +12,9 @@ pr=0.7
 N=(48 48 32)
 b=(0 1)
 delta_t_snap=0.125
-duration=100
+duration=200
 
 # Now run your Julia script
 julia ${SCRIPT_DIR}/../src/rbc_gym/sim/rbc_sim3D.jl --dir ${dir}/train --seed 42 --random_inits 20 --Ra ${ra} --N "${N[@]}" --b "${b[@]}" --delta_t_snap ${delta_t_snap} --duration ${duration} --use_cpu
-julia ${SCRIPT_DIR}/../src/rbc_gym/sim/rbc_sim3D.jl --dir ${dir}/test --seed 62 --random_inits 10 --Ra ${ra} --N "${N[@]}" --b "${b[@]}" --delta_t_snap ${delta_t_snap} --duration ${duration} --use_cpu
-julia ${SCRIPT_DIR}/../src/rbc_gym/sim/rbc_sim3D.jl --dir ${dir}/val --seed 72 --random_inits 10 --Ra ${ra} --N "${N[@]}" --b "${b[@]}" --delta_t_snap ${delta_t_snap} --duration ${duration} --use_cpu
+julia ${SCRIPT_DIR}/../src/rbc_gym/sim/rbc_sim3D.jl --dir ${dir}/test --seed 1000 --random_inits 10 --Ra ${ra} --N "${N[@]}" --b "${b[@]}" --delta_t_snap ${delta_t_snap} --duration ${duration} --use_cpu
+julia ${SCRIPT_DIR}/../src/rbc_gym/sim/rbc_sim3D.jl --dir ${dir}/val --seed 20000 --random_inits 10 --Ra ${ra} --N "${N[@]}" --b "${b[@]}" --delta_t_snap ${delta_t_snap} --duration ${duration} --use_cpu
