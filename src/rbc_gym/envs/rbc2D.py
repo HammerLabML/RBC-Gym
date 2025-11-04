@@ -131,7 +131,7 @@ class RayleighBenardConvection2DEnv(gym.Env):
         self.clock = None
 
     def _compute_coeff_bounds(
-        self, modes: int, actuator_limit: float, Δb: float = 1.0, scheme: str = "decay"
+        self, modes: int, heater_limit: float, Δb: float = 1.0, scheme: str = "decay"
     ) -> np.ndarray:
         """
         Per-coefficient maximum magnitudes so that the Julia-side scaling K≈1 most of the time.
@@ -141,13 +141,13 @@ class RayleighBenardConvection2DEnv(gym.Env):
         scheme="decay": give low-k more room via 1/n decay (recommended)
         """
         if scheme == "equal":
-            m = actuator_limit * Δb / (2 * modes)
+            m = heater_limit * Δb / (2 * modes)
             return np.full(2 * modes, m, dtype=np.float32)
         # decay ~ 1/n
         HN = sum(1.0 / k for k in range(1, modes + 1))
         bounds = []
         for n in range(1, modes + 1):
-            w_pair = actuator_limit * Δb * (1.0 / n) / HN  # pair budget
+            w_pair = heater_limit * Δb * (1.0 / n) / HN  # pair budget
             bounds += [w_pair / 2, w_pair / 2]  # split equally to a_n and b_n
         return np.array(bounds, dtype=np.float32)
 

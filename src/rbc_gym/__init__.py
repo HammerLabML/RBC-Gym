@@ -11,7 +11,7 @@ register(
         "state_shape": (64, 96),
         "modes": 6,
         "coeff_scheme": "decay",
-        "actuator_limit": 0.75,
+        "heater_limit": 0.75,
         "heater_duration": 1.5,
         "checkpoint": None,
         "use_gpu": False,

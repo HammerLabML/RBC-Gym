@@ -14,7 +14,7 @@ env = gym.make(
 
 plotter = start_live_control(
     modes=env.unwrapped.modes,
-    actuator_limit=env.unwrapped.actuator_limit,
+    heater_limit=env.unwrapped.heater_limit,
     Lx=2 * np.pi,  # matches Julia
     Δb=1.0,
     T0=2.0,

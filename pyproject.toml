@@ -1,6 +1,6 @@
 [project]
 name = "rbc-gym"
-version = "0.3.0"
+version = "0.3.1"
 description = "Gym environements for 2D and 3D Rayleigh-Benard Convection"
 readme = "README.md"
 authors = [

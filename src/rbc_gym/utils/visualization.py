@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def synthesize_bottom_bc(
     action,  # shape (2*modes,) -> [a1,b1,a2,b2,...,aN,bN]
     modes,
-    actuator_limit,  # fraction of Δb allowed for global amplitude
+    heater_limit,  # fraction of Δb allowed for global amplitude
     Lx=2 * np.pi,  # domain length in x (your sim uses L=[2π, 2])
     Δb=1.0,  # bottom-top temperature difference at bottom (default from your sim)
     T0=2.0,  # base bottom temperature = min_b + Δb (min_b=1, Δb=1 -> T0=2)
@@ -25,9 +25,9 @@ def synthesize_bottom_bc(
         θ = 2 * np.pi * n * x / Lx
         s += a * np.cos(θ) + b * np.sin(θ)
 
-    # amplitude safeguard (match Julia): scale by K = max(1, sumabs / (actuator_limit * Δb))
+    # amplitude safeguard (match Julia): scale by K = max(1, sumabs / (heater_limit * Δb))
     sumabs = np.abs(action).sum()
-    K = max(1.0, sumabs / (actuator_limit * Δb))
+    K = max(1.0, sumabs / (heater_limit * Δb))
     s_safe = s / K
 
     Tb = T0 + s_safe  # final bottom boundary temperature
@@ -43,10 +43,10 @@ def synthesize_bottom_bc(
 
 
 def plot_control(
-    action, modes, actuator_limit, Lx=2 * np.pi, Δb=1.0, T0=2.0, W=512, show_modes=True
+    action, modes, heater_limit, Lx=2 * np.pi, Δb=1.0, T0=2.0, W=512, show_modes=True
 ):
     x, Tb, s_safe, mode_contribs = synthesize_bottom_bc(
-        action, modes, actuator_limit, Lx, Δb, T0, W
+        action, modes, heater_limit, Lx, Δb, T0, W
     )
 
     # Plot resulting boundary temperature
@@ -87,7 +87,7 @@ class ControlPlotter:
     def __init__(
         self,
         modes,
-        actuator_limit,
+        heater_limit,
         Lx=2 * np.pi,
         Δb=1.0,
         T0=2.0,
@@ -96,7 +96,7 @@ class ControlPlotter:
         max_modes=None,  # cap number of per-mode lines shown (None = show all)
     ):
         self.modes = modes
-        self.actuator_limit = actuator_limit
+        self.heater_limit = heater_limit
         self.Lx = Lx
         self.Δb = Δb
         self.T0 = T0
@@ -118,7 +118,7 @@ class ControlPlotter:
         self.ax0.set_title("Bottom boundary temperature (live)")
         self.ax0.legend(loc="upper right")
         # Set stable y-limits around expected range
-        lim = 1.1 * actuator_limit * Δb
+        lim = 1.1 * heater_limit * Δb
         self.ax0.set_ylim(T0 - lim, T0 + lim)
 
         # Bottom axis: fluctuation + modes
@@ -151,7 +151,7 @@ class ControlPlotter:
         x, Tb, s_safe, mode_contribs = synthesize_bottom_bc(
             action,
             modes=self.modes,
-            actuator_limit=self.actuator_limit,
+            heater_limit=self.heater_limit,
             Lx=self.Lx,
             Δb=self.Δb,
             T0=self.T0,
@@ -176,7 +176,7 @@ class ControlPlotter:
 
 def start_live_control(
     modes,
-    actuator_limit,
+    heater_limit,
     Lx=2 * np.pi,
     Δb=1.0,
     T0=2.0,
@@ -190,7 +190,7 @@ def start_live_control(
     """
     return ControlPlotter(
         modes=modes,
-        actuator_limit=actuator_limit,
+        heater_limit=heater_limit,
         Lx=Lx,
         Δb=Δb,
         T0=T0,
